@@ -3,111 +3,136 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Med-Trans Pro: Privacy Edition</title>
+  <title>Med-Trans Ultimate Pro</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
   <style>
     body { font-family: 'Poppins', sans-serif; background: #0f172a; color: #f1f5f9; padding: 20px; }
-    .card { background: rgba(30, 41, 59, 0.95); border: 1px solid #334155; border-radius: 24px; padding: 24px; max-width: 500px; margin: auto; }
-    .btn-clear { background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; color: #f87171; }
+    .card { background: rgba(30, 41, 59, 0.95); border: 1px solid #334155; border-radius: 24px; padding: 24px; max-width: 550px; margin: auto; }
     .recording { background: #ef4444 !important; animation: pulse 1.5s infinite; }
     @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
+    select option { background: #1e293b; }
+    .history-item { border-left: 3px solid #6366f1; background: rgba(30, 41, 59, 0.5); }
   </style>
 </head>
 <body>
 
-  <div class="card space-y-6">
+  <div class="card space-y-4">
     <div class="flex justify-between items-center">
-        <h1 class="text-xl font-bold text-indigo-400">🏥 Med-Trans Pro</h1>
-        <button onclick="privacyClear()" class="btn-clear text-[10px] px-3 py-1 rounded-full font-bold uppercase tracking-tighter">🔒 Privacy Clear</button>
+        <h1 class="text-xl font-bold text-indigo-400">🏥 Med-Trans Ultimate</h1>
+        <button onclick="privacyClear()" class="bg-red-500/10 border border-red-500 text-red-400 text-[10px] px-3 py-1 rounded-full font-bold uppercase">🔒 Privacy Clear</button>
     </div>
 
-    <div class="bg-slate-800/50 p-3 rounded-xl border border-slate-700">
-      <input type="range" id="size-slider" min="14" max="36" value="18" class="w-full" oninput="updateTextSize(this.value)">
+    <input type="text" id="lang-search" onkeyup="filterLanguages()" placeholder="🔍 Search language..." class="w-full p-3 rounded-xl text-sm bg-slate-800 border border-slate-700 outline-none focus:border-indigo-400">
+
+    <div class="grid grid-cols-[1fr,auto,1fr] items-center gap-2">
+      <select id="source-lang" class="bg-slate-800 border border-slate-700 p-3 rounded-xl text-sm outline-none"></select>
+      <button onclick="swap()" class="p-2">🔄</button>
+      <select id="target-lang" class="bg-slate-800 border border-slate-700 p-3 rounded-xl text-sm outline-none"></select>
     </div>
 
-    <div class="flex items-center gap-2 bg-slate-800 p-2 rounded-xl border border-slate-700">
-      <select id="source-lang" class="bg-transparent w-full text-sm p-1 outline-none">
-        <option value="en-US">English</option>
-        <option value="es-ES">Spanish</option>
-      </select>
-      <button onclick="swap()" class="text-lg">🔄</button>
-      <select id="target-lang" class="bg-transparent w-full text-sm p-1 outline-none">
-        <option value="es">Spanish</option>
-        <option value="en">English</option>
-        <option value="ar">Arabic</option>
-      </select>
+    <div class="bg-slate-800/30 p-2 rounded-xl border border-slate-800 flex items-center gap-4">
+      <span class="text-[10px] text-slate-500 font-bold uppercase ml-2">Text Size</span>
+      <input type="range" id="size-slider" min="14" max="40" value="18" class="w-full accent-indigo-500" oninput="updateTextSize(this.value)">
     </div>
 
     <div class="relative">
-      <textarea id="text-input" class="w-full bg-slate-900/50 p-4 rounded-xl h-32 border border-slate-700 text-[18px]" placeholder="Type or speak..."></textarea>
-      <button id="mic-btn" onclick="startSpeechToText()" class="absolute bottom-3 right-3 bg-slate-700 w-10 h-10 rounded-full flex items-center justify-center">🎤</button>
+      <textarea id="text-input" class="w-full bg-slate-900/50 p-4 rounded-xl h-36 border border-slate-700 text-[18px] outline-none" placeholder="Speak or type..."></textarea>
+      <button id="mic-btn" onclick="startSpeechToText()" class="absolute bottom-3 right-3 bg-indigo-600 w-12 h-12 rounded-full flex items-center justify-center shadow-lg">🎤</button>
     </div>
 
-    <button onclick="processAll()" class="w-full bg-indigo-600 hover:bg-indigo-500 p-4 rounded-xl font-bold shadow-lg transition active:scale-95">Translate & Speak</button>
+    <button onclick="processAll()" class="w-full bg-indigo-600 hover:bg-indigo-500 p-4 rounded-xl font-bold shadow-xl transition active:scale-95">Translate & Speak</button>
 
     <div id="result-area" class="hidden p-5 bg-indigo-900/20 rounded-xl border border-indigo-500/30">
       <div id="pdf-content">
-          <p id="text-output" class="text-[18px] font-medium mb-4"></p>
-          <div class="text-[8px] text-slate-500 italic">Med-Trans Record: <span id="current-date"></span></div>
+          <p id="text-output" class="text-[18px] font-medium mb-4 leading-relaxed"></p>
+          <div class="text-[9px] text-slate-500 border-t border-slate-700 pt-2">
+            Date: <span id="current-date"></span> | Sig: ___________________________
+          </div>
       </div>
-      
-      <div class="flex gap-2 mt-4">
-          <button onclick="textToSpeech()" class="flex-1 bg-slate-700 p-2 rounded-lg text-xs font-bold">🔊 Voice</button>
-          <button onclick="downloadPDF()" class="flex-1 bg-pink-600 p-2 rounded-lg text-xs font-bold">📄 Save PDF</button>
+      <div class="grid grid-cols-3 gap-2 mt-4">
+          <button onclick="textToSpeech()" class="bg-slate-700 p-3 rounded-lg text-[10px] font-bold">🔊 Voice</button>
+          <button id="copy-btn" onclick="copyToClipboard()" class="bg-slate-700 p-3 rounded-lg text-[10px] font-bold">📋 Copy</button>
+          <button onclick="downloadPDF()" class="bg-pink-600 p-3 rounded-lg text-[10px] font-bold">📄 PDF</button>
       </div>
+    </div>
+
+    <div id="history-container" class="hidden space-y-2 mt-6">
+      <h3 class="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-1">Session History</h3>
+      <div id="history-list" class="space-y-2 max-h-48 overflow-y-auto pr-1"></div>
     </div>
   </div>
 
   <script>
-    // NEW: PRIVACY CLEAR FUNCTION
-    function privacyClear() {
-      if(confirm("Wipe all patient data from this session?")) {
-        // Clear UI
-        document.getElementById('text-input').value = "";
-        document.getElementById('text-output').textContent = "";
-        document.getElementById('result-area').classList.add('hidden');
-        
-        // Clear Storage
-        localStorage.clear();
-        
-        // Stop Speech
-        window.speechSynthesis.cancel();
-        
-        alert("Session Wiped Successfully.");
-      }
+    const languages = [
+      {code:'af',name:'Afrikaans'},{code:'sq',name:'Albanian'},{code:'ar',name:'Arabic'},{code:'hy',name:'Armenian'},{code:'bn',name:'Bengali'},{code:'zh',name:'Chinese'},{code:'hr',name:'Croatian'},{code:'cs',name:'Czech'},{code:'da',name:'Danish'},{code:'nl',name:'Dutch'},{code:'en',name:'English'},{code:'et',name:'Estonian'},{code:'tl',name:'Filipino'},{code:'fi',name:'Finnish'},{code:'fr',name:'French'},{code:'de',name:'German'},{code:'el',name:'Greek'},{code:'gu',name:'Gujarati'},{code:'he',name:'Hebrew'},{code:'hi',name:'Hindi'},{code:'hu',name:'Hungarian'},{code:'is',name:'Icelandic'},{code:'id',name:'Indonesian'},{code:'it',name:'Italian'},{code:'ja',name:'Japanese'},{code:'ko',name:'Korean'},{code:'la',name:'Latin'},{code:'lv',name:'Latvian'},{code:'lt',name:'Lithuanian'},{code:'ms',name:'Malay'},{code:'no',name:'Norwegian'},{code:'fa',name:'Persian'},{code:'pl',name:'Polish'},{code:'pt',name:'Portuguese'},{code:'ro',name:'Romanian'},{code:'ru',name:'Russian'},{code:'sr',name:'Serbian'},{code:'sk',name:'Slovak'},{code:'sl',name:'Slovenian'},{code:'es',name:'Spanish'},{code:'sw',name:'Swahili'},{code:'sv',name:'Swedish'},{code:'ta',name:'Tamil'},{code:'te',name:'Telugu'},{code:'th',name:'Thai'},{code:'tr',name:'Turkish'},{code:'uk',name:'Ukrainian'},{code:'ur',name:'Urdu'},{code:'vi',name:'Vietnamese'},{code:'zu',name:'Zulu'}
+    ];
+
+    window.onload = () => populateSelects(languages);
+
+    function populateSelects(list) {
+      const src = document.getElementById('source-lang'), trg = document.getElementById('target-lang');
+      const sVal = src.value || 'en', tVal = trg.value || 'es';
+      src.innerHTML = ''; trg.innerHTML = '';
+      list.forEach(l => {
+        src.add(new Option(l.name, l.code));
+        trg.add(new Option(l.name, l.code));
+      });
+      src.value = sVal; trg.value = tVal;
     }
 
-    // --- REMAINDER OF YOUR LOGIC ---
+    function filterLanguages() {
+      const q = document.getElementById('lang-search').value.toLowerCase();
+      populateSelects(languages.filter(l => l.name.toLowerCase().includes(q)));
+    }
+
+    async function processAll() {
+      const text = document.getElementById('text-input').value;
+      const src = document.getElementById('source-lang').value;
+      const trg = document.getElementById('target-lang').value;
+      if (!text) return;
+      try {
+        const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${src}|${trg}`);
+        const data = await res.json();
+        const translated = data.responseData.translatedText;
+        
+        displayResult(translated);
+        addToHistory(text, translated);
+        textToSpeech(translated);
+      } catch (e) { alert("Error"); }
+    }
+
+    function displayResult(t) {
+      document.getElementById('text-output').textContent = t;
+      document.getElementById('current-date').textContent = new Date().toLocaleTimeString();
+      document.getElementById('result-area').classList.remove('hidden');
+    }
+
+    function addToHistory(original, translated) {
+      const container = document.getElementById('history-container');
+      const list = document.getElementById('history-list');
+      container.classList.remove('hidden');
+      
+      const item = document.createElement('div');
+      item.className = "history-item p-3 rounded-xl text-xs space-y-1 animate-fade-in";
+      item.innerHTML = `
+        <div class="text-slate-500 italic">"${original}"</div>
+        <div class="font-bold text-indigo-300">${translated}</div>
+      `;
+      list.prepend(item);
+    }
+
     function updateTextSize(s) {
       document.getElementById('text-input').style.fontSize = s + "px";
       document.getElementById('text-output').style.fontSize = s + "px";
     }
 
-    async function processAll() {
-      const text = document.getElementById('text-input').value;
-      const src = document.getElementById('source-lang').value.split('-')[0];
-      const trg = document.getElementById('target-lang').value;
-      if (!text) return;
-
-      try {
-        const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${src}|${trg}`);
-        const data = await res.json();
-        const translated = data.responseData.translatedText;
-        document.getElementById('text-output').textContent = translated;
-        document.getElementById('current-date').textContent = new Date().toLocaleString();
-        document.getElementById('result-area').classList.remove('hidden');
-        textToSpeech(translated);
-      } catch (e) { alert("Error connecting to translation service."); }
-    }
-
-    function downloadPDF() {
-      const element = document.getElementById('pdf-content');
-      const originalColor = element.style.color;
-      element.style.color = "#000000";
-      html2pdf().set({ margin: 1, filename: 'Med_Note.pdf', html2canvas: { scale: 2, backgroundColor: '#ffffff' } })
-                .from(element).save().then(() => { element.style.color = originalColor; });
+    function copyToClipboard() {
+      const text = document.getElementById('text-output').textContent;
+      navigator.clipboard.writeText(text);
+      document.getElementById('copy-btn').textContent = "Copied! ✅";
+      setTimeout(() => { document.getElementById('copy-btn').textContent = "📋 Copy"; }, 2000);
     }
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -120,6 +145,7 @@
       recognition.onresult = (e) => { document.getElementById('text-input').value = e.results[0][0].transcript; processAll(); };
       recognition.onend = () => document.getElementById('mic-btn').classList.remove('recording');
     }
+
     function textToSpeech(t) {
       window.speechSynthesis.cancel();
       const u = new SpeechSynthesisUtterance(t || document.getElementById('text-output').textContent);
@@ -127,10 +153,27 @@
       u.rate = 0.85;
       window.speechSynthesis.speak(u);
     }
+
+    function downloadPDF() {
+      const element = document.getElementById('pdf-content');
+      element.style.color = "#000000";
+      html2pdf().set({ margin: 1, filename: 'Med_Note.pdf', html2canvas: { scale: 2, backgroundColor: '#ffffff' } }).from(element).save();
+    }
+
+    function privacyClear() {
+      if(confirm("Wipe all session data?")) {
+        document.getElementById('text-input').value = "";
+        document.getElementById('text-output').textContent = "";
+        document.getElementById('history-list').innerHTML = "";
+        document.getElementById('result-area').classList.add('hidden');
+        document.getElementById('history-container').classList.add('hidden');
+        window.speechSynthesis.cancel();
+      }
+    }
+
     function swap() {
       const s = document.getElementById('source-lang'), t = document.getElementById('target-lang'), v = s.value;
-      s.value = t.value.includes('-') ? t.value : t.value + "-US";
-      t.value = v.split('-')[0];
+      s.value = t.value; t.value = v;
     }
   </script>
 </body>
