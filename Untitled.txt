@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Med-Trans Pro: Privacy Edition</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Poppins', sans-serif; background: #0f172a; color: #f1f5f9; padding: 20px; }
+    .card { background: rgba(30, 41, 59, 0.95); border: 1px solid #334155; border-radius: 24px; padding: 24px; max-width: 500px; margin: auto; }
+    .btn-clear { background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; color: #f87171; }
+    .recording { background: #ef4444 !important; animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
+  </style>
+</head>
+<body>
+
+  <div class="card space-y-6">
+    <div class="flex justify-between items-center">
+        <h1 class="text-xl font-bold text-indigo-400">🏥 Med-Trans Pro</h1>
+        <button onclick="privacyClear()" class="btn-clear text-[10px] px-3 py-1 rounded-full font-bold uppercase tracking-tighter">🔒 Privacy Clear</button>
+    </div>
+
+    <div class="bg-slate-800/50 p-3 rounded-xl border border-slate-700">
+      <input type="range" id="size-slider" min="14" max="36" value="18" class="w-full" oninput="updateTextSize(this.value)">
+    </div>
+
+    <div class="flex items-center gap-2 bg-slate-800 p-2 rounded-xl border border-slate-700">
+      <select id="source-lang" class="bg-transparent w-full text-sm p-1 outline-none">
+        <option value="en-US">English</option>
+        <option value="es-ES">Spanish</option>
+      </select>
+      <button onclick="swap()" class="text-lg">🔄</button>
+      <select id="target-lang" class="bg-transparent w-full text-sm p-1 outline-none">
+        <option value="es">Spanish</option>
+        <option value="en">English</option>
+        <option value="ar">Arabic</option>
+      </select>
+    </div>
+
+    <div class="relative">
+      <textarea id="text-input" class="w-full bg-slate-900/50 p-4 rounded-xl h-32 border border-slate-700 text-[18px]" placeholder="Type or speak..."></textarea>
+      <button id="mic-btn" onclick="startSpeechToText()" class="absolute bottom-3 right-3 bg-slate-700 w-10 h-10 rounded-full flex items-center justify-center">🎤</button>
+    </div>
+
+    <button onclick="processAll()" class="w-full bg-indigo-600 hover:bg-indigo-500 p-4 rounded-xl font-bold shadow-lg transition active:scale-95">Translate & Speak</button>
+
+    <div id="result-area" class="hidden p-5 bg-indigo-900/20 rounded-xl border border-indigo-500/30">
+      <div id="pdf-content">
+          <p id="text-output" class="text-[18px] font-medium mb-4"></p>
+          <div class="text-[8px] text-slate-500 italic">Med-Trans Record: <span id="current-date"></span></div>
+      </div>
+      
+      <div class="flex gap-2 mt-4">
+          <button onclick="textToSpeech()" class="flex-1 bg-slate-700 p-2 rounded-lg text-xs font-bold">🔊 Voice</button>
+          <button onclick="downloadPDF()" class="flex-1 bg-pink-600 p-2 rounded-lg text-xs font-bold">📄 Save PDF</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // NEW: PRIVACY CLEAR FUNCTION
+    function privacyClear() {
+      if(confirm("Wipe all patient data from this session?")) {
+        // Clear UI
+        document.getElementById('text-input').value = "";
+        document.getElementById('text-output').textContent = "";
+        document.getElementById('result-area').classList.add('hidden');
+        
+        // Clear Storage
+        localStorage.clear();
+        
+        // Stop Speech
+        window.speechSynthesis.cancel();
+        
+        alert("Session Wiped Successfully.");
+      }
+    }
+
+    // --- REMAINDER OF YOUR LOGIC ---
+    function updateTextSize(s) {
+      document.getElementById('text-input').style.fontSize = s + "px";
+      document.getElementById('text-output').style.fontSize = s + "px";
+    }
+
+    async function processAll() {
+      const text = document.getElementById('text-input').value;
+      const src = document.getElementById('source-lang').value.split('-')[0];
+      const trg = document.getElementById('target-lang').value;
+      if (!text) return;
+
+      try {
+        const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${src}|${trg}`);
+        const data = await res.json();
+        const translated = data.responseData.translatedText;
+        document.getElementById('text-output').textContent = translated;
+        document.getElementById('current-date').textContent = new Date().toLocaleString();
+        document.getElementById('result-area').classList.remove('hidden');
+        textToSpeech(translated);
+      } catch (e) { alert("Error connecting to translation service."); }
+    }
+
+    function downloadPDF() {
+      const element = document.getElementById('pdf-content');
+      const originalColor = element.style.color;
+      element.style.color = "#000000";
+      html2pdf().set({ margin: 1, filename: 'Med_Note.pdf', html2canvas: { scale: 2, backgroundColor: '#ffffff' } })
+                .from(element).save().then(() => { element.style.color = originalColor; });
+    }
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = SpeechRecognition ? new SpeechRecognition() : null;
+    function startSpeechToText() {
+      if (!recognition) return;
+      recognition.lang = document.getElementById('source-lang').value;
+      recognition.start();
+      recognition.onstart = () => document.getElementById('mic-btn').classList.add('recording');
+      recognition.onresult = (e) => { document.getElementById('text-input').value = e.results[0][0].transcript; processAll(); };
+      recognition.onend = () => document.getElementById('mic-btn').classList.remove('recording');
+    }
+    function textToSpeech(t) {
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(t || document.getElementById('text-output').textContent);
+      u.lang = document.getElementById('target-lang').value;
+      u.rate = 0.85;
+      window.speechSynthesis.speak(u);
+    }
+    function swap() {
+      const s = document.getElementById('source-lang'), t = document.getElementById('target-lang'), v = s.value;
+      s.value = t.value.includes('-') ? t.value : t.value + "-US";
+      t.value = v.split('-')[0];
+    }
+  </script>
+</body>
+</html>
